@@ -566,7 +566,71 @@ void ggml_vec_dot_q1_0_q8_0(int n, float * GGML_RESTRICT s, size_t bs, const voi
     const block_q1_0 * GGML_RESTRICT x = vx;
     const block_q8_0 * GGML_RESTRICT y = vy;
 
-#if defined(__AVX2__)
+#if defined(__AVX512F__) && defined(__AVX512BW__)
+    // Q1_0 is sign-only: element e of a block is +d when bit e of qs is set,
+    // -d when clear. The 64-lane trick this branch exists for: 64 packed
+    // sign bits ARE a __mmask64, so the byte-shuffle + bit-mask + compare
+    // dance the AVX2 path needs to expand bits into byte lanes collapses
+    // into a single kmov + mask-blend against the negated activations.
+    //
+    // Lane order checks out against the AVX2 reference: element (8j + b) is
+    // bit b of qs byte j, and a little-endian uint64 load puts that at mask
+    // bit position (8j + b), which is byte lane (8j + b) of the 512-bit
+    // register — the same order the two 256-bit activation loads produce.
+    const __m512i zero_512 = _mm512_setzero_si512();
+#if !defined(__AVX512VNNI__)
+    const __m512i ones_8 = _mm512_set1_epi8(1);
+    const __m512i ones_16 = _mm512_set1_epi16(1);
+#else
+    const __m512i ones_8 = _mm512_set1_epi8(1);
+#endif
+    __m512 acc = _mm512_setzero_ps();
+
+    for (int ib = 0; ib < nb; ++ib) {
+        const float d0 = GGML_CPU_FP16_TO_FP32(x[ib].d);
+        const block_q8_0 * GGML_RESTRICT y_ptr = &y[ib * 4];
+        const __m512 vd0 = _mm512_set1_ps(d0);
+
+        for (int half = 0; half < 2; ++half) {
+            // 64 sign bits for elements [64*half, 64*half + 64).
+            uint64_t bits;
+            memcpy(&bits, &x[ib].qs[8 * half], sizeof(bits));
+            const __mmask64 sign_pos = (__mmask64) bits;
+
+            // Two q8_0 blocks' activations. Their qs arrays are separated
+            // by the second block's scale, so one 512-bit load cannot span
+            // them; two 256-bit loads + insert is the memory layout's price.
+            const int K = 2 * half;
+            const __m512i qy = _mm512_inserti64x4(
+                    _mm512_castsi256_si512(
+                            _mm256_loadu_si256((const __m256i *) y_ptr[K].qs)),
+                    _mm256_loadu_si256((const __m256i *) y_ptr[K + 1].qs), 1);
+
+            // bit set -> +qy, bit clear -> -qy; same signs as the AVX2
+            // path's (qy ^ sm) - sm.
+            const __m512i qy_neg = _mm512_sub_epi8(zero_512, qy);
+            const __m512i sy = _mm512_mask_blend_epi8(sign_pos, qy_neg, qy);
+
+            // Per-lane i32 sums of 4 bytes: lanes 0..7 belong to block K,
+            // lanes 8..15 to block K+1.
+#if defined(__AVX512VNNI__)
+            const __m512i s32 = _mm512_dpbusd_epi32(zero_512, ones_8, sy);
+#else
+            const __m512i s32 = _mm512_madd_epi16(_mm512_maddubs_epi16(ones_8, sy), ones_16);
+#endif
+
+            // Scale each half-register by its own activation block's delta,
+            // with the weight delta folded in once.
+            const __m512 dy = _mm512_insertf32x8(
+                    _mm512_castps256_ps512(
+                            _mm256_set1_ps(GGML_CPU_FP16_TO_FP32(y_ptr[K].d))),
+                    _mm256_set1_ps(GGML_CPU_FP16_TO_FP32(y_ptr[K + 1].d)), 1);
+            acc = _mm512_fmadd_ps(_mm512_mul_ps(vd0, dy), _mm512_cvtepi32_ps(s32), acc);
+        }
+    }
+
+    *s = _mm512_reduce_add_ps(acc);
+#elif defined(__AVX2__)
     const __m256i ones_8 = _mm256_set1_epi8(1);
     const __m256i ones_16 = _mm256_set1_epi16(1);
     const __m256i byte_shuf = _mm256_setr_epi8(
