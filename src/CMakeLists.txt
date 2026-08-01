@@ -53,6 +53,18 @@ if(ANDROID)
     endif()
 endif()
 
+if(NOT ANDROID AND NOT APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    # Same baseline the Android arm64 branch above already assumes: ARMv8.2-A
+    # with the dot-product extension. Without an explicit -march the compiler
+    # targets plain armv8-a, so ggml's sdot/udot int8 kernels are compiled
+    # out of the binary entirely and every quantised matmul falls back to the
+    # scalar path. A Cortex-A72-era CPU (no dotprod) needs this line changed
+    # to its own -march, not removed.
+    message(STATUS "Non-Android ARM64 build - enabling dot product optimizations")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8.2-a+dotprod -O3")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8.2-a+dotprod -O3")
+endif()
+
 if(WIN32)
   set(LLAMA_VULKAN ON CACHE BOOL "llama: enable Vulkan" FORCE)
   message(STATUS "Windows detected, enabling LLAMA_VULKAN")
