@@ -101,6 +101,28 @@ class FllamaTokenizeRequest {
   FllamaTokenizeRequest({required this.input, required this.modelPath});
 }
 
+/// One encoder-decoder (T5/MT5) translation call. [input] carries the
+/// direction tag the model was trained with (e.g. `>>heb<< Hello`);
+/// [modelPath] points at a seq2seq GGUF such as HebrewBerry. See
+/// `fllamaTranslate`.
+class FllamaTranslateRequest {
+  final String input;
+  final String modelPath;
+
+  /// Max tokens to generate; <= 0 means 256.
+  final int maxTokens;
+
+  /// Threads for encode+decode; <= 0 means 4.
+  final int numThreads;
+
+  FllamaTranslateRequest({
+    required this.input,
+    required this.modelPath,
+    this.maxTokens = 0,
+    this.numThreads = 0,
+  });
+}
+
 class FllamaGpuMemoryInfo {
   final int deviceIndex;
   final int totalBytes;

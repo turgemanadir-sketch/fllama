@@ -153,6 +153,30 @@ class FllamaBindings {
       );
   late final _fllama_tokenize = _fllama_tokenizePtr
       .asFunction<int Function(fllama_tokenize_request)>();
+
+  ffi.Pointer<ffi.Char> fllama_translate(fllama_translate_request request) {
+    return _fllama_translate(request);
+  }
+
+  late final _fllama_translatePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(fllama_translate_request)
+        >
+      >('fllama_translate');
+  late final _fllama_translate = _fllama_translatePtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(fllama_translate_request)>();
+
+  void fllama_translate_free(ffi.Pointer<ffi.Char> result) {
+    return _fllama_translate_free(result);
+  }
+
+  late final _fllama_translate_freePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
+        'fllama_translate_free',
+      );
+  late final _fllama_translate_free = _fllama_translate_freePtr
+      .asFunction<void Function(ffi.Pointer<ffi.Char>)>();
 }
 
 final class fllama_gpu_memory_info extends ffi.Struct {
@@ -276,4 +300,20 @@ final class fllama_tokenize_request extends ffi.Struct {
 
   /// Required: .ggml model file path
   external ffi.Pointer<ffi.Char> model_path;
+}
+
+final class fllama_translate_request extends ffi.Struct {
+  /// Required: source text, direction tag included (e.g. ">>heb<< Hello").
+  external ffi.Pointer<ffi.Char> input;
+
+  /// Required: T5/MT5-architecture .gguf file path.
+  external ffi.Pointer<ffi.Char> model_path;
+
+  /// Optional: max tokens to generate. <= 0 means 256.
+  @ffi.Int()
+  external int max_tokens;
+
+  /// Optional: threads for encode+decode. <= 0 means 4.
+  @ffi.Int()
+  external int num_threads;
 }

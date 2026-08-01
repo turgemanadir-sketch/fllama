@@ -101,3 +101,7 @@ void fllamaCancelInference(int requestId) {
 Future<int> fllamaTokenize(FllamaTokenizeRequest request) async {
   throw UnimplementedError();
 }
+
+Future<String?> fllamaTranslate(FllamaTranslateRequest request) async {
+  throw UnimplementedError();
+}

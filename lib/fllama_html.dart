@@ -200,6 +200,14 @@ external JSPromise<JSNumber> fllamaTokenizeJs(String modelPath, String input);
 /// Returns the number of tokens in [request.input].
 ///
 /// Useful for identifying what messages will be in context when the LLM is run.
+/// Encoder-decoder translation is not available on web: the wasm build has
+/// no seq2seq path, and the models it serves are decoder-only.
+Future<String?> fllamaTranslate(FllamaTranslateRequest request) async {
+  throw UnsupportedError(
+      'fllamaTranslate is not supported on web; run translation on a native '
+      'platform or through a server.');
+}
+
 Future<int> fllamaTokenize(FllamaTokenizeRequest request) async {
   try {
     final completer = Completer<int>();
