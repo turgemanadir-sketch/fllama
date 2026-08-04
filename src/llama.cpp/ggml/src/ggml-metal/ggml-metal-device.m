@@ -618,8 +618,23 @@ void ggml_metal_rsets_free(ggml_metal_rsets_t rsets) {
         return;
     }
 
-    // note: if you hit this assert, most likely you haven't deallocated all Metal resources before exiting
-    GGML_ASSERT([rsets->data count] == 0);
+    // note: if you hit this, most likely you haven't deallocated all Metal resources before exiting
+    //
+    // Upstream asserts here. For an embedded library this is only reachable
+    // from the destructor of the function-local `static std::vector<...> devs`
+    // in ggml-metal-device.cpp, i.e. during __cxa_finalize at process exit —
+    // so aborting turns an ordinary quit into a SIGABRT crash report while the
+    // OS is about to reclaim these pages anyway. An embedder that keeps a model
+    // resident until exit (fllama does deliberately: ServerManager caches
+    // contexts and exposes no unload entry point) hits it on every single quit.
+    // Warn and skip the teardown instead; the same "leak at exit rather than
+    // crash at exit" trade-off fllama already makes for its own ServerManager.
+    if ([rsets->data count] != 0) {
+        GGML_LOG_WARN("%s: %lu Metal resources still live at exit; skipping "
+                      "residency-set teardown\n",
+                      __func__, (unsigned long) [rsets->data count]);
+        return;
+    }
 
     atomic_store_explicit(&rsets->d_stop, true, memory_order_relaxed);
 
