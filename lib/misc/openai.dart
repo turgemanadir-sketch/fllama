@@ -90,6 +90,12 @@ class OpenAiRequest {
   final Function(String)? logger;
   final ToolChoice? toolChoice;
 
+  /// Whether a reasoning-capable chat template should open a thinking block.
+  /// Defaults to true (the historical hardcoded behaviour). Set false to take
+  /// the template's no-think branch — e.g. qwen35 then pre-fills the closed
+  /// `<think>\n\n</think>\n\n` form and the model answers directly.
+  final bool enableThinking;
+
   /// Optional: path to an MTP assistant/drafter GGUF to enable Multi-Token
   /// Prediction speculative decoding. Native-only; ignored on web.
   final String? draftModelPath;
@@ -135,6 +141,7 @@ class OpenAiRequest {
       'presence_penalty': presencePenalty,
       if (toolChoice != null) 'tool_choice': toolChoice?.jsonName,
       if (jinjaTemplate != null) 'jinja_template': jinjaTemplate,
+      'enable_thinking': enableThinking,
     };
     return jsonEncode(json);
   }
@@ -177,6 +184,7 @@ class OpenAiRequest {
     // Optional logger.
     this.logger,
     this.jinjaTemplate,
+    this.enableThinking = true,
     // Optional MTP/speculative drafter GGUF (native-only).
     this.draftModelPath,
     this.draftNMax,

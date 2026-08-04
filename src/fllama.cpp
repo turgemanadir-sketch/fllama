@@ -293,7 +293,13 @@ static void run_inference(fllama_inference_request request,
           // channel-based templates (Qwen, GPT-OSS/Harmony, etc). Allow the
           // request body to override explicitly.
           inputs.reasoning_format = COMMON_REASONING_FORMAT_AUTO;
+          // Thinking defaults on, but the request body may switch it off —
+          // templates with a no-think branch (e.g. qwen35 emits the closed
+          // <think>\n\n</think>\n\n form) are unreachable without this.
           inputs.enable_thinking = true;
+          if (body.contains("enable_thinking") && body["enable_thinking"].is_boolean()) {
+            inputs.enable_thinking = body["enable_thinking"].get<bool>();
+          }
           if (body.contains("reasoning_format") && body["reasoning_format"].is_string()) {
             inputs.reasoning_format = common_reasoning_format_from_name(
                 body["reasoning_format"].get<std::string>());
