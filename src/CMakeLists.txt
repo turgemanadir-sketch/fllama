@@ -66,8 +66,21 @@ if(NOT ANDROID AND NOT APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
 endif()
 
 if(WIN32)
-  set(LLAMA_VULKAN ON CACHE BOOL "llama: enable Vulkan" FORCE)
-  message(STATUS "Windows detected, enabling LLAMA_VULKAN")
+  # GGML_VULKAN, not LLAMA_VULKAN. llama.cpp renamed its backend switches to
+  # the GGML_* prefix and kept a compatibility shim for the old names —
+  # `llama_option_depr()` in the vendored CMakeLists.txt maps LLAMA_CUBLAS,
+  # LLAMA_CUDA, LLAMA_METAL, LLAMA_METAL_EMBED_LIBRARY, LLAMA_NATIVE,
+  # LLAMA_RPC, LLAMA_SYCL, LLAMA_SYCL_F16, LLAMA_CANN and LLAMA_CURL forward.
+  # **Vulkan is the one backend missing from that list**, so the old name it
+  # was set under here resolved to nothing: `grep -rn LLAMA_VULKAN` over the
+  # whole vendored llama.cpp tree returns zero matches. The `set()` succeeded,
+  # the status message printed, GGML_VULKAN stayed at its OFF default
+  # (ggml/CMakeLists.txt), and every Windows build shipped CPU-only inference
+  # while the Vulkan kernels sat compiled out — including the Q1_0 kernels
+  # this project's flagship model needs, which are present in this tree.
+  # The if(APPLE) block below already used the GGML_* form correctly.
+  set(GGML_VULKAN ON CACHE BOOL "ggml: use Vulkan" FORCE)
+  message(STATUS "Windows detected, enabling GGML_VULKAN")
 endif()
 
 if(APPLE)

@@ -334,8 +334,13 @@ Map<String, String> _computeDefines(OS targetOS) {
   }
 
   // Windows: Vulkan GPU acceleration.
+  //
+  // GGML_VULKAN, not LLAMA_VULKAN — see the matching comment in
+  // src/CMakeLists.txt. Vulkan is the only backend llama.cpp's
+  // `llama_option_depr()` shim does not alias from the old LLAMA_* name, so
+  // the previous define here reached nothing and Windows built CPU-only.
   if (targetOS == OS.windows) {
-    defines['LLAMA_VULKAN'] = 'ON';
+    defines['GGML_VULKAN'] = 'ON';
   }
 
   // Linux: position-independent code — the static .a libs get linked into
