@@ -1,0 +1,2 @@
+/usr/bin/ar qc libserver-context.a "CMakeFiles/server-context.dir/llama.cpp/tools/server/server-task.cpp.o" "CMakeFiles/server-context.dir/llama.cpp/tools/server/server-queue.cpp.o" "CMakeFiles/server-context.dir/llama.cpp/tools/server/server-common.cpp.o" "CMakeFiles/server-context.dir/llama.cpp/tools/server/server-chat.cpp.o" "CMakeFiles/server-context.dir/llama.cpp/tools/server/server-context.cpp.o"
+/usr/bin/ranlib libserver-context.a

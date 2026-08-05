@@ -107,7 +107,13 @@ std::shared_ptr<llama_model> _get_or_load_model(const std::string &model_path) {
     // Initialize model params with defaults
     llama_model_params mparams = llama_model_default_params();
     mparams.vocab_only = true;
-    mparams.use_mmap = true;
+    // Was `mparams.use_mmap = true;`. Upstream llama.cpp replaced the bool with
+    // `enum llama_load_mode`, which folds mmap and mlock into one field
+    // (NONE / MMAP / MLOCK / MMAP_MLOCK / DIRECT_IO). MMAP is what the bool
+    // asked for, and it is also the current default from
+    // llama_model_default_params() — but it is set explicitly here so a future
+    // change to that default cannot silently turn mmap off for tokenization.
+    mparams.load_mode = LLAMA_LOAD_MODE_MMAP;
     mparams.n_gpu_layers = 0;
     llama_backend_init();
     // Using llama_load_model_from_file instead of llama_init_from_gpt_params
